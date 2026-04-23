@@ -464,14 +464,14 @@ function Header({ P, dark, toggleTheme, onHome, view }) {
       borderBottom: `1px solid ${dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
     }}>
       <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <button onClick={onHome} style={{ display: "flex", alignItems: "center", gap: 12, color: P.headerText }}>
+        <button onClick={onHome} style={{ display: "flex", alignItems: "center", gap: 14, color: P.headerText }}>
           <img src={HEROES_LOGO_WHITE} alt="Heroes" style={{
-            width: 40, height: 40, objectFit: "contain", flexShrink: 0,
-            filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.3))",
+            width: 52, height: 52, objectFit: "contain", flexShrink: 0,
+            filter: "drop-shadow(0 2px 10px rgba(0,0,0,0.4))",
           }} />
           <div style={{ textAlign: "left" }}>
-            <div className="serif" style={{ fontSize: 17, fontWeight: 800, lineHeight: 1 }}>Flash Cards</div>
-            <div style={{ fontSize: 10.5, opacity: 0.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginTop: 3 }}>Heroes vs Bandits</div>
+            <div className="serif" style={{ fontSize: 20, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.01em" }}>Flash Cards</div>
+            <div style={{ fontSize: 10.5, opacity: 0.55, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>Heroes vs Bandits</div>
           </div>
         </button>
         <button onClick={toggleTheme} style={{
