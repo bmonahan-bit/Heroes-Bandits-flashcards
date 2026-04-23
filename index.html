@@ -583,6 +583,106 @@ function AmbientGlow({ P, mood = "neutral" }) {
 }
 
 /* ──────────────────────────────────────────────────────────────
+   PROGRESS TRACKING
+   localStorage-backed stats, daily streak, milestones
+   ────────────────────────────────────────────────────────────── */
+const STATS_KEY = "mgfc_stats_v1";
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+
+const DEFAULT_STATS = {
+  modes: {}, // { [mode]: { sessions, totalCards, totalCorrect, bestScore, bestStreak, lastPlayed } }
+  totalSessions: 0,
+  totalCards: 0,
+  totalCorrect: 0,
+  perfectRounds: 0,
+  bestStreakAllTime: 0,
+  dailyStreak: 0,
+  longestDailyStreak: 0,
+  lastPlayedDate: null,
+  milestones: [], // unlocked milestone keys
+};
+
+function loadStats() {
+  try {
+    const raw = localStorage.getItem(STATS_KEY);
+    if (!raw) return { ...DEFAULT_STATS };
+    return { ...DEFAULT_STATS, ...JSON.parse(raw) };
+  } catch { return { ...DEFAULT_STATS }; }
+}
+
+function saveStats(s) {
+  try { localStorage.setItem(STATS_KEY, JSON.stringify(s)); } catch {}
+}
+
+const MILESTONES = [
+  { key: "first_session", label: "First session", test: s => s.totalSessions >= 1 },
+  { key: "ten_sessions", label: "10 sessions", test: s => s.totalSessions >= 10 },
+  { key: "hundred_cards", label: "100 cards", test: s => s.totalCards >= 100 },
+  { key: "first_perfect", label: "First perfect round", test: s => s.perfectRounds >= 1 },
+  { key: "streak_5", label: "5-card streak", test: s => s.bestStreakAllTime >= 5 },
+  { key: "streak_10", label: "10-card streak", test: s => s.bestStreakAllTime >= 10 },
+  { key: "daily_3", label: "3-day practice streak", test: s => s.longestDailyStreak >= 3 },
+  { key: "daily_7", label: "7-day practice streak", test: s => s.longestDailyStreak >= 7 },
+];
+
+// Returns { stats, newMilestones }
+function recordSession({ score, total, mode, maxStreak }) {
+  const s = loadStats();
+  const today = todayStr();
+
+  // Daily streak
+  if (s.lastPlayedDate === today) {
+    // already counted today
+  } else if (s.lastPlayedDate && daysBetween(s.lastPlayedDate, today) === 1) {
+    s.dailyStreak = (s.dailyStreak || 0) + 1;
+  } else {
+    s.dailyStreak = 1;
+  }
+  s.longestDailyStreak = Math.max(s.longestDailyStreak || 0, s.dailyStreak);
+  s.lastPlayedDate = today;
+
+  // Per-mode stats
+  const m = s.modes[mode] || { sessions: 0, totalCards: 0, totalCorrect: 0, bestScore: 0, bestStreak: 0, lastPlayed: null };
+  m.sessions += 1;
+  m.totalCards += total;
+  m.totalCorrect += score;
+  m.bestScore = Math.max(m.bestScore, score);
+  m.bestStreak = Math.max(m.bestStreak, maxStreak || 0);
+  m.lastPlayed = today;
+  s.modes[mode] = m;
+
+  // Totals
+  s.totalSessions += 1;
+  s.totalCards += total;
+  s.totalCorrect += score;
+  if (score === total) s.perfectRounds += 1;
+  s.bestStreakAllTime = Math.max(s.bestStreakAllTime, maxStreak || 0);
+
+  // Milestones
+  const prevMilestones = new Set(s.milestones || []);
+  const newMilestones = [];
+  for (const ms of MILESTONES) {
+    if (!prevMilestones.has(ms.key) && ms.test(s)) {
+      s.milestones.push(ms.key);
+      newMilestones.push(ms);
+    }
+  }
+
+  saveStats(s);
+  return { stats: s, newMilestones };
+}
+
+// Read-only: check if daily streak is still valid (broken if no play yesterday or today)
+function getCurrentDailyStreak(s) {
+  if (!s.lastPlayedDate) return 0;
+  const today = todayStr();
+  const gap = daysBetween(s.lastPlayedDate, today);
+  if (gap === 0 || gap === 1) return s.dailyStreak;
+  return 0; // streak broken
+}
+
+/* ──────────────────────────────────────────────────────────────
    APP
    ────────────────────────────────────────────────────────────── */
 function App() {
@@ -620,7 +720,12 @@ function App() {
               mode={practiceMode}
               setMood={setMood}
               onExit={() => { setPracticeMode(null); setMood("neutral"); }}
-              onDone={(r) => { setResults(r); setView("results"); setMood("neutral"); }}
+              onDone={(r) => {
+                const { newMilestones } = recordSession(r);
+                setResults({ ...r, newMilestones });
+                setView("results");
+                setMood("neutral");
+              }}
             />
           )}
           {view === "results" && (
@@ -679,6 +784,8 @@ function HomeView({ P, onGo }) {
   const dark = P.bg === DARK.bg;
   const heroLogo = dark ? HEROES_STANDING_WHITE : HEROES_STANDING;
   const banditLogo = dark ? BANDIT_LOGO_WHITE : BANDIT_LOGO_DARK;
+  const stats = loadStats();
+  const dailyStreak = getCurrentDailyStreak(stats);
   return (
     <div className="fade-up">
       <div style={{ textAlign: "center", padding: "16px 8px 8px" }}>
@@ -698,6 +805,30 @@ function HomeView({ P, onGo }) {
         <div style={{ fontSize: 15, color: P.muted, marginTop: 12, maxWidth: 420, margin: "12px auto 0", lineHeight: 1.5 }}>
           Learn the five Heroes and five Bandits. Then drill until you can spot them on the course — in real time.
         </div>
+        {stats.totalSessions > 0 && (
+          <div style={{ marginTop: 16, display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+            {dailyStreak > 0 && (
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "6px 12px", borderRadius: 99,
+                background: `${P.gold}18`, color: P.gold,
+                fontSize: 12, fontWeight: 800,
+                border: `1px solid ${P.gold}40`,
+              }}>
+                <IconFlame size={12} /> {dailyStreak}-day streak
+              </div>
+            )}
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "6px 12px", borderRadius: 99,
+              background: P.card, color: P.muted,
+              fontSize: 12, fontWeight: 700,
+              border: `1px solid ${P.border}`,
+            }}>
+              {stats.totalSessions} session{stats.totalSessions === 1 ? "" : "s"} · {Math.round((stats.totalCorrect / Math.max(1, stats.totalCards)) * 100)}% lifetime
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: 28, display: "grid", gap: 12 }}>
@@ -917,6 +1048,7 @@ function PracticeMenu({ P, onBack, onPick }) {
   const heroLogo = dark ? HEROES_STANDING_WHITE : HEROES_STANDING;
   const heroFilter = "none";
   const banditLogo = dark ? BANDIT_LOGO_WHITE : BANDIT_LOGO_DARK;
+  const stats = loadStats();
   const modes = [
     { key: "bandits",  label: "Identify the Bandit",  sub: "See a thought — pick the Bandit showing up.", color: P.red, logo: banditLogo },
     { key: "heroes",   label: "Identify the Hero",    sub: "See a mindset — pick the Hero being expressed.", color: P.green, logo: heroLogo, logoFilter: heroFilter },
@@ -935,7 +1067,10 @@ function PracticeMenu({ P, onBack, onPick }) {
       </div>
 
       <div style={{ marginTop: 20, display: "grid", gap: 10 }}>
-        {modes.map((m, i) => (
+        {modes.map((m, i) => {
+          const ms = stats.modes[m.key];
+          const accuracy = ms ? Math.round((ms.totalCorrect / Math.max(1, ms.totalCards)) * 100) : null;
+          return (
           <button key={m.key} onClick={() => { vibrate(10); onPick(m.key); }} className="fade-up" style={{
             animationDelay: `${i * 0.05}s`,
             width: "100%", textAlign: "left", padding: "18px 18px",
@@ -956,10 +1091,25 @@ function PracticeMenu({ P, onBack, onPick }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 15.5, fontWeight: 800, lineHeight: 1.2 }}>{m.label}</div>
               <div style={{ fontSize: 12.5, color: P.muted, marginTop: 4, lineHeight: 1.4 }}>{m.sub}</div>
+              {ms && (
+                <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, padding: "3px 8px", borderRadius: 6, background: `${m.color}18`, color: m.color, letterSpacing: "0.03em" }}>
+                    {accuracy}%
+                  </span>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: P.bg, color: P.muted, border: `1px solid ${P.border}` }}>
+                    Best {ms.bestScore}/10
+                  </span>
+                  {ms.bestStreak >= 3 && (
+                    <span style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 6, background: `${P.gold}15`, color: P.gold, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                      <IconFlame size={9} /> {ms.bestStreak}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             <IconArrow size={18} />
           </button>
-        ))}
+        );})}
       </div>
     </div>
   );
@@ -1225,7 +1375,7 @@ function PracticeSession({ P, mode, setMood, onExit, onDone }) {
    ────────────────────────────────────────────────────────────── */
 function ResultsView({ P, results, onAgain, onHome }) {
   if (!results) return null;
-  const { score, total, misses, mode, maxStreak = 0 } = results;
+  const { score, total, misses, mode, maxStreak = 0, newMilestones = [] } = results;
   const pct = Math.round((score / total) * 100);
   const grade = pct >= 90 ? "Sharp" : pct >= 70 ? "Solid" : pct >= 50 ? "Learning" : "Keep at it";
   const color = pct >= 90 ? P.green : pct >= 70 ? P.accent : pct >= 50 ? P.gold : P.red;
@@ -1283,6 +1433,26 @@ function ResultsView({ P, results, onAgain, onHome }) {
           </div>
         )}
       </div>
+
+      {newMilestones.length > 0 && (
+        <div className="fade-up" style={{
+          marginTop: 4, marginBottom: 16,
+          background: `linear-gradient(135deg, ${P.gold}18, ${P.gold}08)`,
+          border: `1px solid ${P.gold}55`,
+          borderRadius: 14, padding: "14px 16px",
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: P.gold, textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            <IconTrophy size={13} /> {newMilestones.length === 1 ? "Milestone unlocked" : `${newMilestones.length} milestones unlocked`}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {newMilestones.map(m => (
+              <div key={m.key} style={{ fontSize: 14, fontWeight: 700, color: P.text }}>
+                {m.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {misses.length > 0 && (
         <div style={{ marginTop: 12 }}>
