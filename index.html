@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#09090b" />
+<title>Mental Game Flash Cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Fraunces:ital,wght@0,600;0,800;1,600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+  #root { min-height: 100vh; min-height: 100dvh; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  button:active { transform: scale(0.97); }
+  button { transition: transform 0.08s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease; }
+  .serif { font-family: 'Fraunces', Georgia, serif; font-variation-settings: "opsz" 144; }
+  .flip-card { perspective: 1200px; }
+  .flip-inner { transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1); transform-style: preserve-3d; position: relative; }
+  .flip-inner.flipped { transform: rotateY(180deg); }
+  .flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .flip-back { transform: rotateY(180deg); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-up { animation: fadeUp 0.35s ease both; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+  .shake { animation: shake 0.3s ease; }
+  @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 60% { transform: scale(1.04); } 100% { transform: scale(1); opacity: 1; } }
+  .pop { animation: pop 0.35s ease both; }
+  /* Screen flash overlay */
+  @keyframes flashIn { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+  .flash-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 9998; animation: flashIn 0.6s ease-out forwards; mix-blend-mode: screen; }
+  /* Streak burst */
+  @keyframes streakPop { 0% { transform: scale(0.5) rotate(-8deg); opacity: 0; } 50% { transform: scale(1.15) rotate(2deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+  .streak-pop { animation: streakPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  /* Floating + points */
+  @keyframes floatUp { 0% { opacity: 0; transform: translate(-50%, 0) scale(0.7); } 20% { opacity: 1; transform: translate(-50%, -20px) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -80px) scale(0.9); } }
+  .float-up { animation: floatUp 1.1s ease-out forwards; }
+  /* Confetti piece */
+  @keyframes confettiFall { 0% { transform: translateY(-20px) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+  .confetti-piece { position: fixed; top: -20px; width: 10px; height: 14px; pointer-events: none; z-index: 9997; animation: confettiFall 2.4s linear forwards; }
+  /* Ring pulse */
+  @keyframes ringPulse { 0% { transform: scale(0.8); opacity: 0.8; } 100% { transform: scale(2.5); opacity: 0; } }
+  .ring-pulse { animation: ringPulse 0.7s ease-out forwards; }
+  /* Card glow on correct */
+  @keyframes correctGlow { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 30% { box-shadow: 0 0 40px 8px var(--glow-color, #16a34a); } }
+  .glow-correct { animation: correctGlow 0.7s ease-out; }
+  /* Number counter pulse */
+  @keyframes scorePulse { 0% { transform: scale(1); } 40% { transform: scale(1.3); color: var(--pulse-color, inherit); } 100% { transform: scale(1); } }
+  .score-pulse { animation: scorePulse 0.4s ease-out; }
+  /* Background atmosphere shift */
+  @keyframes atmosShift { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.7; } }
+  .atmos { animation: atmosShift 8s ease-in-out infinite; }
+  /* Streak fire trail */
+  @keyframes fireFlicker { 0%, 100% { opacity: 0.8; transform: scaleY(1); } 50% { opacity: 1; transform: scaleY(1.15); } }
+  .fire-flicker { animation: fireFlicker 0.6s ease-in-out infinite; }
+  /* Results count-up */
+  @keyframes countUpPop { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
+  .count-up { animation: countUpPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  /* Wrong shake variant — sharper */
+  @keyframes wrongShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
+  .wrong-shake { animation: wrongShake 0.4s ease; }
+  ::-webkit-scrollbar { width: 0; display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef } = React;
+
+/* ──────────────────────────────────────────────────────────────
+   CONSTANTS — mirrors Scorecard palette
+   ────────────────────────────────────────────────────────────── */
+const LIGHT = {
+  bg: "#f6f7f4", card: "#ffffff", cardAlt: "#f0f1ed",
+  green: "#16a34a", greenDim: "#bbf7d0",
+  red: "#dc2626", redDim: "#fecaca",
+  gold: "#ca8a04", text: "#0f172a", muted: "#6b7280",
+  border: "#e0e2dc", accent: "#2563eb",
+  headerBg: "linear-gradient(175deg, #09090b 0%, #141416 60%, #1c1c1f 100%)",
+  headerText: "#ffffff",
+};
+const DARK = {
+  bg: "#09090b", card: "#141416", cardAlt: "#1c1c1f",
+  green: "#34d87a", greenDim: "#1a7a3d",
+  red: "#f87171", redDim: "#b91c1c",
+  gold: "#fbbf24", text: "#f8fafc", muted: "#94a3b8",
+  border: "#2a2a2e", accent: "#5cc8fa",
+  headerBg: "linear-gradient(175deg, #000000 0%, #09090b 100%)",
+  headerText: "#f8fafc",
+};
+
+const HEROES = [
+  { name: "Love",          counters: "Fear",        tagline: "You get to play.",         essence: "Gratitude. Choosing to be here. Playing because you love it, not because you have to." },
+  { name: "Acceptance",    counters: "Frustration", tagline: "It is what it is.",        essence: "Meeting reality as it is. Bad bounces, mud balls, wind shifts — accept and move." },
+  { name: "Commitment",    counters: "Doubt",       tagline: "Pick it. Trust it. Go.",   essence: "Full conviction in the chosen shot. No second-guessing over the ball." },
+  { name: "Vulnerability", counters: "Shame",       tagline: "I care. That's okay.",     essence: "Admitting the shot matters. Owning nerves instead of hiding from them." },
+  { name: "Grit",          counters: "Quit",        tagline: "One more shot.",           essence: "Staying in it when the round gets hard. Refusing to mail it in." },
+];
+
+const BANDITS = [
+  { name: "Fear",        countered: "Love",          tagline: "What if I mess up?",     essence: "Focus on avoiding bad outcomes. Over-thinking consequences, under-thinking the shot." },
+  { name: "Frustration", countered: "Acceptance",    tagline: "This shouldn't happen.", essence: "Rejecting the reality in front of you. Anger at bounces, at yourself, at the game." },
+  { name: "Doubt",       countered: "Commitment",    tagline: "Which club? Which line?",essence: "Uncertainty that lingers into the swing. Half-committed shots are the result." },
+  { name: "Shame",       countered: "Vulnerability", tagline: "Everyone's watching.",   essence: "Believing a bad shot makes you a bad person. Wanting to hide." },
+  { name: "Quit",        countered: "Grit",          tagline: "Who cares anymore.",     essence: "Checking out. Mailing in the rest of the round. Swinging without intent." },
+];
+
+/* ──────────────────────────────────────────────────────────────
+   CARD BANK
+   ────────────────────────────────────────────────────────────── */
+const BANDIT_CARDS = [
+  // Fear
+  { prompt: "Water left, OB right. I just need to not screw this up.", answer: "Fear" },
+  { prompt: "Don't hit it fat. Don't hit it fat.", answer: "Fear" },
+  { prompt: "If I miss this putt, I lose the match.", answer: "Fear" },
+  { prompt: "Last time I played this hole I made a 7.", answer: "Fear" },
+  { prompt: "There are people watching the tee.", answer: "Fear" },
+  // Frustration
+  { prompt: "That's the third lip-out today. You've got to be kidding me.", answer: "Frustration" },
+  { prompt: "I hit that exactly where I wanted and it still ended up in the bunker.", answer: "Frustration" },
+  { prompt: "Same mistake as yesterday. Again.", answer: "Frustration" },
+  { prompt: "Why does this always happen to me?", answer: "Frustration" },
+  { prompt: "I'm playing like garbage.", answer: "Frustration" },
+  // Doubt
+  { prompt: "Is it a stock 8 or a soft 7?", answer: "Doubt" },
+  { prompt: "My swing felt off on the range. This is going to be ugly.", answer: "Doubt" },
+  { prompt: "Maybe I should just chip out sideways.", answer: "Doubt" },
+  { prompt: "I don't think I can carry that bunker.", answer: "Doubt" },
+  { prompt: "I've never made a putt from this distance.", answer: "Doubt" },
+  // Shame
+  { prompt: "Everyone's going to think I'm a terrible golfer.", answer: "Shame" },
+  { prompt: "I shouldn't even be playing with these guys.", answer: "Shame" },
+  { prompt: "That was embarrassing. I want to hide.", answer: "Shame" },
+  { prompt: "My handicap is a lie.", answer: "Shame" },
+  { prompt: "I can't believe I just did that in front of my boss.", answer: "Shame" },
+  // Quit
+  { prompt: "Round's over. Let's just get through the back nine.", answer: "Quit" },
+  { prompt: "Who cares at this point.", answer: "Quit" },
+  { prompt: "I'll try again next week.", answer: "Quit" },
+  { prompt: "Might as well swing hard, nothing to lose.", answer: "Quit" },
+  { prompt: "I'm done caring about this score.", answer: "Quit" },
+];
+
+const HERO_CARDS = [
+  // Love
+  { prompt: "I get to play golf today.", answer: "Love" },
+  { prompt: "This shot is exactly why I love this game.", answer: "Love" },
+  { prompt: "Tough pin, tough wind. Fun.", answer: "Love" },
+  { prompt: "I've been looking forward to this all week.", answer: "Love" },
+  { prompt: "Even the hard holes are part of why I'm here.", answer: "Love" },
+  // Acceptance
+  { prompt: "Bad bounce. Play it from here.", answer: "Acceptance" },
+  { prompt: "Wind just switched. New plan.", answer: "Acceptance" },
+  { prompt: "That's the shot I hit. On to the next.", answer: "Acceptance" },
+  { prompt: "Mud ball. It is what it is.", answer: "Acceptance" },
+  { prompt: "I'm not swinging my best today, and that's the round I have.", answer: "Acceptance" },
+  // Commitment
+  { prompt: "7-iron. Full swing. Trust it.", answer: "Commitment" },
+  { prompt: "Picked my line. Going.", answer: "Commitment" },
+  { prompt: "I've chosen the shot. Now I execute it.", answer: "Commitment" },
+  { prompt: "No second-guessing over the ball.", answer: "Commitment" },
+  { prompt: "One target. One swing.", answer: "Commitment" },
+  // Vulnerability
+  { prompt: "I'm nervous, and that's okay.", answer: "Vulnerability" },
+  { prompt: "I care about this putt. I'm not going to pretend I don't.", answer: "Vulnerability" },
+  { prompt: "I want to play well in front of them. Admitting that.", answer: "Vulnerability" },
+  { prompt: "This matters to me.", answer: "Vulnerability" },
+  { prompt: "I'm scared, and I'm going anyway.", answer: "Vulnerability" },
+  // Grit
+  { prompt: "Six holes left. Still in this.", answer: "Grit" },
+  { prompt: "One shot at a time.", answer: "Grit" },
+  { prompt: "Grind out a bogey here. Move on.", answer: "Grit" },
+  { prompt: "Tired, hot, behind. Keep going.", answer: "Grit" },
+  { prompt: "Not done yet.", answer: "Grit" },
+];
+
+// Counter cards: Bandit scenario → pick the Hero that answers it.
+const COUNTER_CARDS = [
+  // Fear → Love / Vulnerability / Commitment
+  { scenario: "First tee jitters in front of a crowd.", bandit: "Fear", answer: "Love",          why: "Reframe the pressure as privilege — you get to do this." },
+  { scenario: "Forced carry over water on 17.",         bandit: "Fear", answer: "Commitment",    why: "Pick the shot, commit fully. Fear grows in hesitation." },
+  { scenario: "Can't lose this match.",                 bandit: "Fear", answer: "Vulnerability", why: "Admit it matters. Hiding from the stakes makes them worse." },
+  { scenario: "Standing over a 4-footer to win.",       bandit: "Fear", answer: "Commitment",    why: "Pick the line, commit, stroke it. Zero doubt." },
+  { scenario: "Tight driving hole after two bad tee shots.", bandit: "Fear", answer: "Love",     why: "Come back to why you're out here. Play, don't survive." },
+  // Frustration → Acceptance
+  { scenario: "Three-putted the last green.",           bandit: "Frustration", answer: "Acceptance", why: "It happened. Carry the lesson, not the emotion." },
+  { scenario: "Perfect swing, bad bounce into a hazard.", bandit: "Frustration", answer: "Acceptance", why: "You can't control the bounce. Play it from here." },
+  { scenario: "Playing partner is slow and it's in your head.", bandit: "Frustration", answer: "Acceptance", why: "The pace is what it is. Adjust or be miserable." },
+  { scenario: "Hit the same tree as last round.",       bandit: "Frustration", answer: "Acceptance", why: "Same tree. Different shot now. Play this one." },
+  { scenario: "Lipped out your birdie putt.",           bandit: "Frustration", answer: "Acceptance", why: "Good stroke, bad result. Move on." },
+  // Doubt → Commitment
+  { scenario: "Between clubs on an approach shot.",     bandit: "Doubt", answer: "Commitment", why: "Pick one. Swing it like you meant to." },
+  { scenario: "Unsure of the read on a breaking putt.", bandit: "Doubt", answer: "Commitment", why: "Pick a line, trust the stroke. Doubt makes for deceleration." },
+  { scenario: "New swing thought isn't clicking.",      bandit: "Doubt", answer: "Commitment", why: "Drop the thought. Trust the swing you brought today." },
+  { scenario: "Can't decide: go for it or lay up.",     bandit: "Doubt", answer: "Commitment", why: "Either choice beats indecision. Pick and go." },
+  { scenario: "Wind is swirling, hard to read.",        bandit: "Doubt", answer: "Commitment", why: "Best read you can make, then commit. No re-thinking mid-swing." },
+  // Shame → Vulnerability
+  { scenario: "Topped a drive off the first tee.",      bandit: "Shame", answer: "Vulnerability", why: "Own it out loud. Shame lives in hiding." },
+  { scenario: "Whiffed a chip in front of the group.",  bandit: "Shame", answer: "Vulnerability", why: "A bad shot isn't a bad person. Laugh, reset." },
+  { scenario: "Blew up on a hole in a tournament.",     bandit: "Shame", answer: "Vulnerability", why: "Acknowledge it hurt. Then keep playing." },
+  { scenario: "Outdriven by 80 yards on every hole.",   bandit: "Shame", answer: "Vulnerability", why: "Your game is your game. Play it honestly." },
+  { scenario: "Hit into the group ahead.",              bandit: "Shame", answer: "Vulnerability", why: "Apologize, own it, move on. No spiral." },
+  // Quit → Grit
+  { scenario: "Triple bogey on 13, round 'ruined.'",    bandit: "Quit", answer: "Grit", why: "Five holes is a lot of golf. Still counts." },
+  { scenario: "Way behind in a match.",                 bandit: "Quit", answer: "Grit", why: "Win the next shot. That's the only job." },
+  { scenario: "Exhausted on a hot day.",                bandit: "Quit", answer: "Grit", why: "Tired is information, not permission to check out." },
+  { scenario: "Playing poorly and nobody's watching.",  bandit: "Quit", answer: "Grit", why: "The effort is for you. Nobody else." },
+  { scenario: "Weather turned miserable.",              bandit: "Quit", answer: "Grit", why: "Conditions are the same for everyone. Compete." },
+];
+
+const MIXED_CARDS = [
+  { prompt: "I deserve better than this.",             answer: "Frustration", type: "Bandit" },
+  { prompt: "I'm scared and I'm hitting it anyway.",   answer: "Vulnerability", type: "Hero" },
+  { prompt: "Just get it over with.",                  answer: "Quit", type: "Bandit" },
+  { prompt: "This is the shot I've chosen.",           answer: "Commitment", type: "Hero" },
+  { prompt: "Everyone's judging me.",                  answer: "Shame", type: "Bandit" },
+  { prompt: "Bad lie. Play it from here.",             answer: "Acceptance", type: "Hero" },
+  { prompt: "I can't believe I missed that.",          answer: "Frustration", type: "Bandit" },
+  { prompt: "Five holes left. Let's go.",              answer: "Grit", type: "Hero" },
+  { prompt: "I shouldn't even be out here.",           answer: "Shame", type: "Bandit" },
+  { prompt: "I get to play today.",                    answer: "Love", type: "Hero" },
+];
+
+/* ──────────────────────────────────────────────────────────────
+   HELPERS
+   ────────────────────────────────────────────────────────────── */
+const shuffle = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+const vibrate = (ms) => { try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
+
+/* ──────────────────────────────────────────────────────────────
+   ICONS
+   ────────────────────────────────────────────────────────────── */
+const Icon = ({ d, size = 20, stroke = "currentColor", fill = "none", sw = 2 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
+  </svg>
+);
+const IconBook = (p) => <Icon {...p} d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15zM4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5" />;
+const IconCards = (p) => <Icon {...p} d="M2 7h14v14H2zM6 3h14v14" />;
+const IconCheck = (p) => <Icon {...p} d="M20 6 9 17l-5-5" sw={2.5} />;
+const IconX = (p) => <Icon {...p} d="M18 6 6 18M6 6l12 12" sw={2.5} />;
+const IconArrow = (p) => <Icon {...p} d="M5 12h14M13 6l6 6-6 6" />;
+const IconBack = (p) => <Icon {...p} d="M19 12H5M11 18l-6-6 6-6" />;
+const IconSun = (p) => <Icon {...p} d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" fill="none" />;
+const IconMoon = (p) => <Icon {...p} d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor" stroke="none" />;
+const IconRefresh = (p) => <Icon {...p} d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5" />;
+const IconTrophy = (p) => <Icon {...p} d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2z" />;
+const IconFlame = (p) => <Icon {...p} d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" fill="currentColor" stroke="none" />;
+
+/* ──────────────────────────────────────────────────────────────
+   SCREEN EFFECTS
+   ────────────────────────────────────────────────────────────── */
+function ScreenFlash({ color, onDone }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 600);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return (
+    <div className="flash-overlay" style={{
+      background: `radial-gradient(ellipse at center, ${color}55 0%, ${color}22 40%, transparent 75%)`,
+    }} />
+  );
+}
+
+function Confetti({ colors, onDone }) {
+  const pieces = useMemo(() => {
+    const arr = [];
+    for (let i = 0; i < 60; i++) {
+      arr.push({
+        left: Math.random() * 100,
+        delay: Math.random() * 0.8,
+        duration: 1.8 + Math.random() * 1.2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: 6 + Math.random() * 8,
+        rotate: Math.random() * 360,
+        shape: Math.random() > 0.5 ? "square" : "circle",
+      });
+    }
+    return arr;
+  }, [colors]);
+  useEffect(() => {
+    const t = setTimeout(onDone, 3500);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return (
+    <>
+      {pieces.map((p, i) => (
+        <div key={i} className="confetti-piece" style={{
+          left: `${p.left}vw`,
+          width: p.size, height: p.size * 1.4,
+          background: p.color,
+          borderRadius: p.shape === "circle" ? "50%" : 2,
+          animationDelay: `${p.delay}s`,
+          animationDuration: `${p.duration}s`,
+          transform: `rotate(${p.rotate}deg)`,
+        }} />
+      ))}
+    </>
+  );
+}
+
+function FloatingPoints({ value, color, x, y, onDone }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 1100);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return (
+    <div className="float-up" style={{
+      position: "fixed", left: x, top: y,
+      fontSize: 28, fontWeight: 900, color,
+      pointerEvents: "none", zIndex: 9999,
+      textShadow: `0 0 12px ${color}88, 0 2px 4px rgba(0,0,0,0.3)`,
+      fontFamily: "'Fraunces', Georgia, serif",
+    }}>
+      {value}
+    </div>
+  );
+}
+
+function StreakBadge({ streak, P }) {
+  if (streak < 3) return null;
+  const intensity = Math.min(streak / 10, 1);
+  const color = streak >= 7 ? P.gold : streak >= 5 ? "#f97316" : P.accent;
+  return (
+    <div key={streak} className="streak-pop" style={{
+      display: "inline-flex", alignItems: "center", gap: 6,
+      padding: "5px 11px", borderRadius: 99,
+      background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
+      color: "#fff", fontSize: 12, fontWeight: 800,
+      boxShadow: `0 0 ${12 + intensity * 16}px ${color}99`,
+      letterSpacing: "0.03em",
+    }}>
+      <span className="fire-flicker" style={{ display: "inline-flex" }}>
+        <IconFlame size={13} />
+      </span>
+      {streak} streak
+    </div>
+  );
+}
+
+/* Ambient glow layer — subtle background atmosphere */
+function AmbientGlow({ P, mood = "neutral" }) {
+  const colors = {
+    neutral: [P.green, P.accent],
+    correct: [P.green, P.green],
+    wrong: [P.red, P.red],
+    fire: [P.gold, "#f97316"],
+  };
+  const [c1, c2] = colors[mood] || colors.neutral;
+  return (
+    <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
+      <div className="atmos" style={{
+        position: "absolute", top: "-20%", left: "-10%",
+        width: "60vw", height: "60vw",
+        background: `radial-gradient(circle, ${c1}15 0%, transparent 60%)`,
+        filter: "blur(40px)",
+      }} />
+      <div className="atmos" style={{
+        position: "absolute", bottom: "-20%", right: "-10%",
+        width: "60vw", height: "60vw",
+        background: `radial-gradient(circle, ${c2}15 0%, transparent 60%)`,
+        filter: "blur(40px)",
+        animationDelay: "4s",
+      }} />
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   APP
+   ────────────────────────────────────────────────────────────── */
+function App() {
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem("mgfc_theme") !== "light"; } catch { return true; }
+  });
+  const [view, setView] = useState("home"); // home | learn | practice | results
+  const [practiceMode, setPracticeMode] = useState(null);
+  const [results, setResults] = useState(null);
+  const [mood, setMood] = useState("neutral");
+  const P = dark ? DARK : LIGHT;
+
+  useEffect(() => {
+    document.body.style.background = P.bg;
+    document.body.style.color = P.text;
+    try { localStorage.setItem("mgfc_theme", dark ? "dark" : "light"); } catch {}
+  }, [dark, P]);
+
+  const toggleTheme = () => { vibrate(8); setDark(d => !d); };
+
+  return (
+    <div style={{ minHeight: "100dvh", background: P.bg, color: P.text, paddingBottom: 40, position: "relative" }}>
+      <AmbientGlow P={P} mood={mood} />
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <Header P={P} dark={dark} toggleTheme={toggleTheme} onHome={() => setView("home")} view={view} />
+        <main style={{ maxWidth: 640, margin: "0 auto", padding: "20px 18px 0" }}>
+          {view === "home" && <HomeView P={P} onGo={setView} />}
+          {view === "learn" && <LearnView P={P} onBack={() => setView("home")} />}
+          {view === "practice" && !practiceMode && (
+            <PracticeMenu P={P} onBack={() => setView("home")} onPick={(m) => setPracticeMode(m)} />
+          )}
+          {view === "practice" && practiceMode && (
+            <PracticeSession
+              P={P}
+              mode={practiceMode}
+              setMood={setMood}
+              onExit={() => { setPracticeMode(null); setMood("neutral"); }}
+              onDone={(r) => { setResults(r); setView("results"); setMood("neutral"); }}
+            />
+          )}
+          {view === "results" && (
+            <ResultsView
+              P={P}
+              results={results}
+              onAgain={() => { setResults(null); setView("practice"); }}
+              onHome={() => { setResults(null); setPracticeMode(null); setView("home"); }}
+            />
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   HEADER
+   ────────────────────────────────────────────────────────────── */
+function Header({ P, dark, toggleTheme, onHome, view }) {
+  return (
+    <div style={{
+      background: P.headerBg, color: P.headerText,
+      padding: "18px 18px 22px", position: "sticky", top: 0, zIndex: 10,
+      borderBottom: `1px solid ${dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
+    }}>
+      <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <button onClick={onHome} style={{ display: "flex", alignItems: "center", gap: 10, color: P.headerText }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: 10,
+            background: `linear-gradient(135deg, ${P.green} 0%, ${P.accent} 100%)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontWeight: 900, fontSize: 14, color: "#fff",
+            boxShadow: "0 4px 14px rgba(22,163,74,0.35)",
+          }}>MG</div>
+          <div style={{ textAlign: "left" }}>
+            <div className="serif" style={{ fontSize: 17, fontWeight: 800, lineHeight: 1 }}>Flash Cards</div>
+            <div style={{ fontSize: 10.5, opacity: 0.5, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginTop: 3 }}>Mental Game Trainer</div>
+          </div>
+        </button>
+        <button onClick={toggleTheme} style={{
+          width: 38, height: 38, borderRadius: 10,
+          background: dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.1)",
+          color: P.headerText, display: "flex", alignItems: "center", justifyContent: "center",
+          border: `1px solid ${dark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.15)"}`,
+        }} aria-label="Toggle theme">
+          {dark ? <IconSun size={18} /> : <IconMoon size={18} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   HOME
+   ────────────────────────────────────────────────────────────── */
+function HomeView({ P, onGo }) {
+  return (
+    <div className="fade-up">
+      <div style={{ textAlign: "center", padding: "28px 8px 8px" }}>
+        <div className="serif" style={{ fontSize: 36, fontWeight: 800, lineHeight: 1.05, letterSpacing: "-0.02em" }}>
+          Train your <em style={{ color: P.green, fontStyle: "italic" }}>mental game</em>.
+        </div>
+        <div style={{ fontSize: 15, color: P.muted, marginTop: 12, maxWidth: 420, margin: "12px auto 0", lineHeight: 1.5 }}>
+          Learn the five Heroes and five Bandits. Then drill until you can spot them on the course — in real time.
+        </div>
+      </div>
+
+      <div style={{ marginTop: 28, display: "grid", gap: 12 }}>
+        <HomeTile
+          P={P}
+          tone="primary"
+          icon={<IconBook size={22} />}
+          title="Learn the Framework"
+          sub="Start here. Read the concepts and see how each Hero answers each Bandit."
+          onClick={() => onGo("learn")}
+        />
+        <HomeTile
+          P={P}
+          tone="secondary"
+          icon={<IconCards size={22} />}
+          title="Practice with Flash Cards"
+          sub="Three modes. Identify the Bandit, the Hero, or pick the Hero that counters a situation."
+          onClick={() => onGo("practice")}
+        />
+      </div>
+
+      <div style={{
+        marginTop: 28, padding: "18px 18px", background: P.card,
+        border: `1px solid ${P.border}`, borderRadius: 14,
+        display: "flex", gap: 14, alignItems: "flex-start",
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+          background: `${P.gold}22`, color: P.gold,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <IconTrophy size={18} />
+        </div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: P.muted, marginBottom: 4 }}>The Core Idea</div>
+          <div style={{ fontSize: 14.5, lineHeight: 1.55, color: P.text }}>
+            Every shot starts in the mind. Bandits pull you toward bad swings. Heroes pull you toward good ones. Recognize which is showing up — that's the whole skill.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HomeTile({ P, tone, icon, title, sub, onClick }) {
+  const isPrimary = tone === "primary";
+  return (
+    <button onClick={onClick} style={{
+      width: "100%", textAlign: "left", padding: "20px 20px",
+      background: isPrimary ? `linear-gradient(135deg, ${P.green} 0%, ${P.accent} 120%)` : P.card,
+      color: isPrimary ? "#fff" : P.text,
+      border: isPrimary ? "none" : `1px solid ${P.border}`,
+      borderRadius: 16,
+      display: "flex", gap: 16, alignItems: "center",
+      boxShadow: isPrimary ? "0 8px 24px rgba(22,163,74,0.25)" : "none",
+    }}>
+      <div style={{
+        width: 46, height: 46, borderRadius: 12, flexShrink: 0,
+        background: isPrimary ? "rgba(255,255,255,0.18)" : `${P.green}15`,
+        color: isPrimary ? "#fff" : P.green,
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 16.5, fontWeight: 800, lineHeight: 1.2 }}>{title}</div>
+        <div style={{ fontSize: 13, marginTop: 4, opacity: isPrimary ? 0.85 : 1, color: isPrimary ? "#fff" : P.muted, lineHeight: 1.4 }}>{sub}</div>
+      </div>
+      <IconArrow size={20} />
+    </button>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   LEARN VIEW
+   ────────────────────────────────────────────────────────────── */
+function LearnView({ P, onBack }) {
+  const [tab, setTab] = useState("heroes");
+  const tabs = [
+    { key: "heroes", label: "Heroes" },
+    { key: "bandits", label: "Bandits" },
+    { key: "matchups", label: "Matchups" },
+  ];
+
+  return (
+    <div className="fade-up">
+      <BackBar P={P} onBack={onBack} label="Home" />
+      <div className="serif" style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 8 }}>
+        The Framework
+      </div>
+      <div style={{ fontSize: 14, color: P.muted, marginTop: 6, lineHeight: 1.5 }}>
+        Five Bandits show up in every round. Five Heroes answer them. Learn the pairs, then drill them in Practice.
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 6, marginTop: 20, padding: 4, background: P.cardAlt, borderRadius: 12, border: `1px solid ${P.border}` }}>
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            flex: 1, padding: "10px 12px", fontSize: 13.5, fontWeight: 700,
+            borderRadius: 9, color: tab === t.key ? "#fff" : P.text,
+            background: tab === t.key ? (t.key === "bandits" ? P.red : t.key === "matchups" ? P.gold : P.green) : "transparent",
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {tab === "heroes" && (
+        <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+          {HEROES.map((h, i) => (
+            <ConceptCard key={h.name} P={P} accent={P.green} label="Hero"
+              title={h.name} tagline={h.tagline} essence={h.essence}
+              counter={`Answers: ${h.counters}`} delay={i * 0.04} />
+          ))}
+        </div>
+      )}
+
+      {tab === "bandits" && (
+        <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+          {BANDITS.map((b, i) => (
+            <ConceptCard key={b.name} P={P} accent={P.red} label="Bandit"
+              title={b.name} tagline={b.tagline} essence={b.essence}
+              counter={`Countered by: ${b.countered}`} delay={i * 0.04} />
+          ))}
+        </div>
+      )}
+
+      {tab === "matchups" && (
+        <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+          {HEROES.map((h, i) => {
+            const b = BANDITS.find(x => x.name === h.counters);
+            return (
+              <div key={h.name} className="fade-up" style={{ animationDelay: `${i * 0.04}s`, background: P.card, border: `1px solid ${P.border}`, borderRadius: 14, padding: "16px 16px", display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 12, alignItems: "center" }}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: P.green, textTransform: "uppercase" }}>Hero</div>
+                  <div className="serif" style={{ fontSize: 20, fontWeight: 800, marginTop: 4 }}>{h.name}</div>
+                </div>
+                <div style={{
+                  width: 36, height: 36, borderRadius: "50%", background: `${P.gold}22`, color: P.gold,
+                  display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 16,
+                }}>⚡</div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: P.red, textTransform: "uppercase" }}>Bandit</div>
+                  <div className="serif" style={{ fontSize: 20, fontWeight: 800, marginTop: 4 }}>{b?.name}</div>
+                </div>
+              </div>
+            );
+          })}
+          <div style={{ marginTop: 8, padding: "14px 16px", background: P.cardAlt, border: `1px dashed ${P.border}`, borderRadius: 12, fontSize: 13, color: P.muted, lineHeight: 1.55 }}>
+            The pairings aren't rigid. Vulnerability can answer Fear. Love can answer Quit. But the default matchups above are the strongest counter for each Bandit.
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 22, padding: "16px 18px", background: P.card, border: `1px solid ${P.border}`, borderRadius: 14 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Ready to test yourself?</div>
+        <div style={{ fontSize: 13.5, color: P.muted, marginBottom: 14, lineHeight: 1.5 }}>
+          Flash cards lock the framework in. Three modes, short sessions.
+        </div>
+        <button onClick={onBack} style={{
+          width: "100%", padding: "13px 16px", borderRadius: 12, fontWeight: 800, fontSize: 14.5,
+          background: P.green, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        }}>
+          Back to Home <IconArrow size={18} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ConceptCard({ P, accent, label, title, tagline, essence, counter, delay }) {
+  return (
+    <div className="fade-up" style={{
+      animationDelay: `${delay}s`,
+      background: P.card, border: `1px solid ${P.border}`, borderRadius: 14, padding: "16px 16px",
+      borderLeft: `4px solid ${accent}`,
+    }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: accent, textTransform: "uppercase" }}>{label}</div>
+          <div className="serif" style={{ fontSize: 22, fontWeight: 800, marginTop: 2 }}>{title}</div>
+        </div>
+        <div style={{ fontSize: 11.5, fontWeight: 600, color: P.muted, textAlign: "right", maxWidth: 160 }}>
+          {counter}
+        </div>
+      </div>
+      <div style={{ fontStyle: "italic", fontSize: 14, color: accent, marginTop: 8, fontWeight: 600 }}>"{tagline}"</div>
+      <div style={{ fontSize: 13.5, color: P.muted, marginTop: 8, lineHeight: 1.55 }}>{essence}</div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   PRACTICE MENU
+   ────────────────────────────────────────────────────────────── */
+function PracticeMenu({ P, onBack, onPick }) {
+  const modes = [
+    { key: "bandits",  label: "Identify the Bandit",  sub: "See a thought — pick the Bandit showing up.", color: P.red, icon: "✕" },
+    { key: "heroes",   label: "Identify the Hero",    sub: "See a mindset — pick the Hero being expressed.", color: P.green, icon: "✓" },
+    { key: "counter",  label: "Counter the Bandit",   sub: "See a situation — pick the Hero that answers it.", color: P.gold, icon: "⚡" },
+    { key: "mixed",    label: "Rapid Fire — Hero or Bandit?", sub: "Quick binary round. Train recognition speed.", color: P.accent, icon: "⚡" },
+  ];
+
+  return (
+    <div className="fade-up">
+      <BackBar P={P} onBack={onBack} label="Home" />
+      <div className="serif" style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 8 }}>
+        Pick a drill
+      </div>
+      <div style={{ fontSize: 14, color: P.muted, marginTop: 6, lineHeight: 1.5 }}>
+        Each session is 10 cards. Tap an answer, get immediate feedback, flip for the "why" on counter cards.
+      </div>
+
+      <div style={{ marginTop: 20, display: "grid", gap: 10 }}>
+        {modes.map((m, i) => (
+          <button key={m.key} onClick={() => { vibrate(10); onPick(m.key); }} className="fade-up" style={{
+            animationDelay: `${i * 0.05}s`,
+            width: "100%", textAlign: "left", padding: "18px 18px",
+            background: P.card, color: P.text,
+            border: `1px solid ${P.border}`, borderLeft: `4px solid ${m.color}`,
+            borderRadius: 14, display: "flex", alignItems: "center", gap: 14,
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 11, flexShrink: 0,
+              background: `${m.color}18`, color: m.color,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 20, fontWeight: 900,
+            }}>{m.icon}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15.5, fontWeight: 800, lineHeight: 1.2 }}>{m.label}</div>
+              <div style={{ fontSize: 12.5, color: P.muted, marginTop: 4, lineHeight: 1.4 }}>{m.sub}</div>
+            </div>
+            <IconArrow size={18} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   PRACTICE SESSION
+   ────────────────────────────────────────────────────────────── */
+const SESSION_SIZE = 10;
+
+function PracticeSession({ P, mode, setMood, onExit, onDone }) {
+  const deck = useMemo(() => {
+    let pool;
+    if (mode === "bandits") pool = BANDIT_CARDS.map(c => ({ ...c, options: BANDITS.map(b => b.name), kind: "choice" }));
+    else if (mode === "heroes") pool = HERO_CARDS.map(c => ({ ...c, options: HEROES.map(h => h.name), kind: "choice" }));
+    else if (mode === "counter") pool = COUNTER_CARDS.map(c => ({
+      prompt: c.scenario, bandit: c.bandit, answer: c.answer, why: c.why,
+      options: HEROES.map(h => h.name), kind: "counter",
+    }));
+    else if (mode === "mixed") pool = MIXED_CARDS.map(c => ({ ...c, options: ["Hero", "Bandit"], kind: "mixed" }));
+    return shuffle(pool).slice(0, SESSION_SIZE);
+  }, [mode]);
+
+  const [idx, setIdx] = useState(0);
+  const [picked, setPicked] = useState(null);
+  const [score, setScore] = useState(0);
+  const [misses, setMisses] = useState([]);
+  const [streak, setStreak] = useState(0);
+  const [maxStreak, setMaxStreak] = useState(0);
+  const [flash, setFlash] = useState(null); // { color, key }
+  const [floats, setFloats] = useState([]); // floating points
+  const [scorePulseKey, setScorePulseKey] = useState(0);
+  const [scorePulseColor, setScorePulseColor] = useState(P.green);
+  const [shakeKey, setShakeKey] = useState(0);
+
+  const card = deck[idx];
+  const total = deck.length;
+  const isDone = idx >= total;
+
+  useEffect(() => {
+    if (isDone) onDone({ score, total, misses, mode, maxStreak });
+  }, [isDone]);
+
+  // Update ambient mood based on streak
+  useEffect(() => {
+    if (streak >= 5) setMood("fire");
+    else if (streak >= 3) setMood("correct");
+    else setMood("neutral");
+  }, [streak, setMood]);
+
+  if (!card) return null;
+
+  const handlePick = (opt, e) => {
+    if (picked) return;
+    setPicked(opt);
+    let correct;
+    if (mode === "mixed") correct = opt === card.type;
+    else correct = opt === card.answer;
+
+    // Capture click position for floating points
+    const rect = e?.currentTarget?.getBoundingClientRect();
+    const x = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+    const y = rect ? rect.top : window.innerHeight / 2;
+
+    if (correct) {
+      vibrate(10);
+      const newStreak = streak + 1;
+      setStreak(newStreak);
+      setMaxStreak(m => Math.max(m, newStreak));
+      setScore(s => s + 1);
+      // Flash green
+      setFlash({ color: P.green, key: Date.now() });
+      // Floating + points (bigger on streaks)
+      const points = newStreak >= 5 ? "+3" : newStreak >= 3 ? "+2" : "+1";
+      const fcolor = newStreak >= 5 ? P.gold : P.green;
+      setFloats(f => [...f, { id: Date.now() + Math.random(), value: points, color: fcolor, x, y }]);
+      // Score pulse
+      setScorePulseColor(P.green);
+      setScorePulseKey(k => k + 1);
+      // Extra haptic on milestone streaks
+      if (newStreak === 3 || newStreak === 5 || newStreak === 7 || newStreak === 10) {
+        vibrate([15, 50, 15, 50, 15]);
+      }
+    } else {
+      vibrate([15, 30, 15]);
+      setStreak(0);
+      setShakeKey(k => k + 1);
+      setMisses(m => [...m, { ...card, picked: opt }]);
+      setFlash({ color: P.red, key: Date.now() });
+      setFloats(f => [...f, { id: Date.now() + Math.random(), value: "✕", color: P.red, x, y }]);
+      setScorePulseColor(P.red);
+      setScorePulseKey(k => k + 1);
+    }
+  };
+
+  const handleNext = () => {
+    setPicked(null);
+    setIdx(i => i + 1);
+  };
+
+  const isCounter = mode === "counter";
+  const isMixed = mode === "mixed";
+  const correctAnswer = isMixed ? card.type : card.answer;
+  const wasCorrect = picked && (isMixed ? picked === card.type : picked === card.answer);
+
+  return (
+    <div className="fade-up">
+      {/* Effects layer */}
+      {flash && <ScreenFlash key={flash.key} color={flash.color} onDone={() => setFlash(null)} />}
+      {floats.map(f => (
+        <FloatingPoints key={f.id} value={f.value} color={f.color} x={f.x} y={f.y}
+          onDone={() => setFloats(prev => prev.filter(p => p.id !== f.id))} />
+      ))}
+
+      <BackBar P={P} onBack={onExit} label="Change drill" />
+
+      {/* Progress + streak row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
+        <div style={{ flex: 1, height: 6, background: P.cardAlt, borderRadius: 99, overflow: "hidden" }}>
+          <div style={{
+            width: `${(idx / total) * 100}%`, height: "100%",
+            background: streak >= 5
+              ? `linear-gradient(90deg, ${P.gold}, #f97316)`
+              : `linear-gradient(90deg, ${P.green}, ${P.accent})`,
+            transition: "width 0.3s ease, background 0.4s ease",
+            boxShadow: streak >= 5 ? `0 0 12px ${P.gold}88` : "none",
+          }} />
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: P.muted, minWidth: 52, textAlign: "right" }}>
+          {idx + 1} / {total}
+        </div>
+      </div>
+
+      {/* Streak badge */}
+      {streak >= 3 && (
+        <div style={{ marginTop: 12, display: "flex", justifyContent: "center" }}>
+          <StreakBadge streak={streak} P={P} />
+        </div>
+      )}
+
+      {/* Card */}
+      <div key={idx} className="pop" style={{ marginTop: 20 }}>
+        <div key={shakeKey} className={picked && !wasCorrect ? "wrong-shake" : picked && wasCorrect ? "glow-correct" : ""} style={{
+          background: P.card, border: `1px solid ${P.border}`, borderRadius: 18,
+          padding: "26px 22px", minHeight: 180,
+          display: "flex", flexDirection: "column", justifyContent: "center",
+          "--glow-color": picked && wasCorrect ? P.green : "transparent",
+          position: "relative",
+        }}>
+          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.12em", color: P.muted, textTransform: "uppercase", textAlign: "center" }}>
+            {isCounter ? "Scenario" : isMixed ? "Hero or Bandit?" : mode === "bandits" ? "Which Bandit?" : "Which Hero?"}
+          </div>
+          {isCounter && (
+            <div style={{
+              display: "inline-block", alignSelf: "center", marginTop: 10,
+              padding: "4px 10px", borderRadius: 99,
+              background: `${P.red}18`, color: P.red, fontSize: 11, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase",
+            }}>Bandit: {card.bandit}</div>
+          )}
+          <div className="serif" style={{
+            fontSize: 21, fontWeight: 600, fontStyle: "italic",
+            textAlign: "center", marginTop: 14, lineHeight: 1.4,
+            color: P.text,
+          }}>
+            "{card.prompt}"
+          </div>
+        </div>
+      </div>
+
+      {/* Options */}
+      <div style={{
+        marginTop: 16,
+        display: "grid",
+        gridTemplateColumns: isMixed ? "1fr 1fr" : "repeat(auto-fit, minmax(140px, 1fr))",
+        gap: 8,
+      }}>
+        {card.options.map(opt => {
+          const isCorrect = opt === correctAnswer;
+          const isPicked = opt === picked;
+          let bg = P.card, color = P.text, borderC = P.border;
+          if (picked) {
+            if (isCorrect) { bg = P.green; color = "#fff"; borderC = P.green; }
+            else if (isPicked) { bg = P.red; color = "#fff"; borderC = P.red; }
+            else { bg = P.card; color = P.muted; borderC = P.border; }
+          }
+          return (
+            <button key={opt} onClick={(e) => handlePick(opt, e)} disabled={!!picked} style={{
+              padding: "14px 12px", borderRadius: 12, fontWeight: 700, fontSize: 14,
+              background: bg, color, border: `1.5px solid ${borderC}`,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              opacity: picked && !isCorrect && !isPicked ? 0.55 : 1,
+              boxShadow: picked && isCorrect ? `0 0 20px ${P.green}66` : "none",
+              position: "relative",
+            }}>
+              {picked && isCorrect && <IconCheck size={16} sw={3} />}
+              {picked && isPicked && !isCorrect && <IconX size={16} sw={3} />}
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Feedback */}
+      {picked && (
+        <div className="fade-up" style={{
+          marginTop: 16, padding: "14px 16px", borderRadius: 12,
+          background: wasCorrect ? `${P.green}15` : `${P.red}15`,
+          border: `1px solid ${wasCorrect ? P.green : P.red}40`,
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: wasCorrect ? P.green : P.red }}>
+            {wasCorrect ? (streak >= 5 ? "🔥 On fire" : streak >= 3 ? "Streak!" : "Correct") : "Not quite"}
+          </div>
+          <div style={{ fontSize: 14, marginTop: 6, lineHeight: 1.5, color: P.text }}>
+            {!wasCorrect && <>The answer was <strong>{correctAnswer}</strong>. </>}
+            {isCounter && card.why}
+            {!isCounter && !isMixed && wasCorrect && `"${card.prompt}" — classic ${correctAnswer}.`}
+            {isMixed && wasCorrect && `"${card.prompt}" is ${card.answer}, a ${card.type}.`}
+            {isMixed && !wasCorrect && `"${card.prompt}" is ${card.answer}, a ${card.type}.`}
+          </div>
+        </div>
+      )}
+
+      {/* Next */}
+      {picked && (
+        <button onClick={handleNext} className="fade-up" style={{
+          marginTop: 16, width: "100%", padding: "14px 16px", borderRadius: 12,
+          fontWeight: 800, fontSize: 15, background: P.text, color: P.bg,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        }}>
+          {idx + 1 === total ? "See results" : "Next card"}
+          <IconArrow size={18} />
+        </button>
+      )}
+
+      <div style={{ marginTop: 16, display: "flex", justifyContent: "center", gap: 20, fontSize: 13, color: P.muted, fontWeight: 700 }}>
+        <span key={`s-${scorePulseKey}-c`} className={picked && wasCorrect ? "score-pulse" : ""} style={{ "--pulse-color": P.green, color: P.green }}>
+          ✓ {score}
+        </span>
+        <span key={`s-${scorePulseKey}-w`} className={picked && !wasCorrect ? "score-pulse" : ""} style={{ "--pulse-color": P.red, color: misses.length ? P.red : P.muted }}>
+          ✕ {misses.length}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   RESULTS
+   ────────────────────────────────────────────────────────────── */
+function ResultsView({ P, results, onAgain, onHome }) {
+  if (!results) return null;
+  const { score, total, misses, mode, maxStreak = 0 } = results;
+  const pct = Math.round((score / total) * 100);
+  const grade = pct >= 90 ? "Sharp" : pct >= 70 ? "Solid" : pct >= 50 ? "Learning" : "Keep at it";
+  const color = pct >= 90 ? P.green : pct >= 70 ? P.accent : pct >= 50 ? P.gold : P.red;
+  const isPerfect = score === total;
+  const isStrong = pct >= 80;
+
+  const [showConfetti, setShowConfetti] = useState(isStrong);
+  const [displayScore, setDisplayScore] = useState(0);
+
+  // Count-up animation
+  useEffect(() => {
+    if (score === 0) return;
+    let current = 0;
+    const step = Math.max(1, Math.ceil(score / 20));
+    const interval = setInterval(() => {
+      current = Math.min(current + step, score);
+      setDisplayScore(current);
+      if (current >= score) clearInterval(interval);
+    }, 50);
+    return () => clearInterval(interval);
+  }, [score]);
+
+  const confettiColors = isPerfect
+    ? [P.gold, "#f97316", P.green, P.accent, "#a855f7"]
+    : [P.green, P.accent, P.gold];
+
+  return (
+    <div className="fade-up">
+      {showConfetti && <Confetti colors={confettiColors} onDone={() => setShowConfetti(false)} />}
+
+      <div style={{ textAlign: "center", padding: "30px 0 18px", position: "relative" }}>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: P.muted, textTransform: "uppercase" }}>
+          {isPerfect ? "Perfect Round" : "Session Complete"}
+        </div>
+        <div className="serif count-up" style={{
+          fontSize: 56, fontWeight: 800, marginTop: 8, letterSpacing: "-0.02em", color,
+          textShadow: isStrong ? `0 0 30px ${color}55` : "none",
+          lineHeight: 1,
+        }}>
+          {displayScore} <span style={{ color: P.muted, fontSize: 32 }}>/ {total}</span>
+        </div>
+        <div style={{ fontSize: 17, fontWeight: 700, color, marginTop: 8 }}>{grade}</div>
+
+        {maxStreak >= 3 && (
+          <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "6px 14px", borderRadius: 99,
+              background: `${P.gold}18`, color: P.gold,
+              fontSize: 12, fontWeight: 800, letterSpacing: "0.05em",
+              border: `1px solid ${P.gold}40`,
+            }}>
+              <IconFlame size={13} /> Best streak: {maxStreak}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {misses.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: P.muted, marginBottom: 10 }}>
+            Cards to review ({misses.length})
+          </div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {misses.map((m, i) => (
+              <div key={i} className="fade-up" style={{
+                animationDelay: `${i * 0.08}s`,
+                background: P.card, border: `1px solid ${P.border}`, borderRadius: 12, padding: "12px 14px",
+              }}>
+                <div className="serif" style={{ fontSize: 15, fontStyle: "italic", color: P.text, lineHeight: 1.4 }}>
+                  "{m.prompt}"
+                </div>
+                <div style={{ marginTop: 8, fontSize: 12.5, color: P.muted, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <span>You picked: <strong style={{ color: P.red }}>{m.picked}</strong></span>
+                  <span>Answer: <strong style={{ color: P.green }}>{mode === "mixed" ? m.type : m.answer}</strong></span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {misses.length === 0 && (
+        <div className="pop" style={{
+          padding: "24px 18px", background: `linear-gradient(135deg, ${P.green}18, ${P.accent}18)`, border: `1px solid ${P.green}40`,
+          borderRadius: 14, textAlign: "center",
+        }}>
+          <div style={{ fontSize: 36 }}>🎯</div>
+          <div className="serif" style={{ fontSize: 20, fontWeight: 800, marginTop: 8 }}>Clean sweep.</div>
+          <div style={{ fontSize: 13.5, color: P.muted, marginTop: 6 }}>Try a different drill to keep sharpening.</div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 22, display: "grid", gap: 10 }}>
+        <button onClick={onAgain} style={{
+          padding: "14px 16px", borderRadius: 12, fontWeight: 800, fontSize: 15,
+          background: P.green, color: "#fff",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          boxShadow: `0 8px 20px ${P.green}55`,
+        }}>
+          <IconRefresh size={18} /> Another drill
+        </button>
+        <button onClick={onHome} style={{
+          padding: "13px 16px", borderRadius: 12, fontWeight: 700, fontSize: 14,
+          background: "transparent", color: P.text, border: `1.5px solid ${P.border}`,
+        }}>
+          Back to home
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   SHARED
+   ────────────────────────────────────────────────────────────── */
+function BackBar({ P, onBack, label }) {
+  return (
+    <button onClick={onBack} style={{
+      display: "flex", alignItems: "center", gap: 6,
+      fontSize: 13.5, fontWeight: 700, color: P.muted,
+      padding: "6px 10px 6px 4px", borderRadius: 8,
+    }}>
+      <IconBack size={16} /> {label}
+    </button>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
